@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>你的个人展示页</title>
+    <style>
+        /* --- 首页文字弹出动画 --- */
+        .word {
+            opacity: 0; /* 初始状态为透明 */
+            transform: translateY(20px); /* 初始位置在下方 */
+            display: inline-block; /* 重要：让 span 可以被 transform */
+        }
+
+        .word.pop-in {
+            animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes pop-in {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+/* 解决导航栏遮挡锚点：让每个section的顶部，自动留出导航栏高度的空间 */
+section[id] {
+    scroll-margin-top: 70px; /* 70px = 导航栏实际高度（约50-60px）+ 10px余量 */
+}        /* 1. 定义需要被观察的目标元素的初始状态 */
+        .scroll-anim-target {
+            opacity: 0; /* 初始为透明 */
+            transform: translateY(30px); /* 初始位置在下方 */
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out; /* 使用 transition 更平滑 */
+        }
+
+        /* 2. 定义元素进入视口后应添加的类（触发动画） */
+        .scroll-anim-target.animate-on-scroll {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* --- (保留你原有的其他样式，如 .modal, .project-card 等) --- */
+        /* 全局样式：深色模式+字体设置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #121212; /* 深色背景 */
+            color: #ffffff; /* 文字默认白色 */
+            font-family: Georgia, serif; /* 正文衬线字体 */
+        }
+        h1, h2, h3, nav a {
+            font-family: Arial, sans-serif; /* 标题/导航无衬线字体（现代感） */
+        }
+        .neon-blue {
+            color: #00f0ff; /* 科技感霓虹蓝 */
+        }
+        /* --- 新增的动画样式 --- */
+
+        /* 定义滚动渐入动画 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0; /* 开始时完全透明 */
+                transform: translateY(30px); /* 开始时在下方30像素处 */
+            }
+            to {
+                opacity: 1; /* 结束时完全不透明 */
+                transform: translateY(0); /* 结束时回到原来的位置 */
+            }
+        }
+
+        /* 给需要动画的元素添加这个类 */
+        .animate-on-scroll {
+            opacity: 0; /* 初始状态设为透明，避免闪烁 */
+            animation: fadeInUp 0.8s ease-out forwards; /* 应用动画 */
+        }
+        
+        /* 弹窗(Modal)背景 */
+        .modal {
+            display: none; /* 默认隐藏 */
+            position: fixed; /* 固定在屏幕上 */
+            z-index: 1000; /* 确保在最上层 */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto; /* 允许滚动 */
+            background-color: rgba(0, 0, 0, 0.7); /* 半透明黑色背景 */
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* 弹窗显示时的背景透明度 */
+        .modal.show {
+            display: block;
+            opacity: 1;
+        }
+
+        /* 弹窗内容 */
+        .modal-content {
+            background-color: #1a1a1a;
+            margin: 10% auto; /* 居中显示 */
+            padding: 30px;
+            border: 1px solid #00f0ff;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0, 240, 255, 0.3);
+            position: relative;
+            transform: translateY(-50px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+        
+        /* 弹窗显示时的内容动画 */
+        .modal.show .modal-content {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* 关闭按钮 */
+        .close-btn {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover,
+        .close-btn:focus {
+            color: #00f0ff;
+            text-decoration: none;
+        }
+        
+        .modal h3 {
+            color: #00f0ff;
+            margin-top: 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+        
+        .modal p {
+            color: #dddddd;
+            line-height: 1.6;
+        }
+        
+        .modal-footer {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #333;
+            text-align: right;
+        }
+        
+        .modal-footer a {
+            display: inline-block;
+            background-color: #222;
+            color: #00f0ff;
+            padding: 8px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+        
+        .modal-footer a:hover {
+            background-color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 导航栏：固定在顶部 -->
+<nav style="
+    position: fixed; /* 滚动时固定在顶部 */
+    top: 0;
+    width: 100%;
+    background-color: #1a1a1a80; /* 半透明深色背景 */
+    backdrop-filter: blur(8px); /* 模糊效果更高级 */
+    padding: 15px 0;
+    z-index: 100; /* 确保在最上层 */
+">
+        <div style="max-width: 1200px; margin: 0 auto; text-align: center; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+        <!-- 导航链接 -->
+        <a href="#home" style="
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            position: relative; /* 给下划线做准备 */
+            font-size: 16px;
+        ">首页</a>
+        <a href="#about" style="
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            position: relative;
+            font-size: 16px;
+        ">关于我</a>
+        <a href="#timeline" style="
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            position: relative;
+            font-size: 16px;
+        ">个人经历</a>
+        <a href="#skills" style="
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            position: relative;
+            font-size: 16px;
+        ">技能</a>
+        <a href="#awards" style="
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            position: relative;
+            font-size: 16px;
+        ">获奖荣誉</a>
+        <a href="#projects" style="
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            position: relative;
+            font-size: 16px;
+        ">我的项目</a>
+        <a href="#blog" style="
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            position: relative;
+            font-size: 16px;
+        ">技术博客</a>
+        <a href="#contact" style="
+            color: white;
+            text-decoration: none;
+            padding: 5px 10px;
+            position: relative;
+            font-size: 16px;
+        ">联系方式</a>
+    </div>
+</nav>
+
+<!-- 导航悬停下划线效果（不用改） -->
+<style>
+    nav a::after {
+        content: '';
+        position: absolute;
+        bottom: -3px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background-color: #00f0ff; /* 霓虹蓝下划线 */
+        transition: width 0.3s ease; /* 滑过动画 */
+    }
+    nav a:hover::after {
+        width: 100%; /* 悬停时下划线展开 */
+    }
+</style>
+<!-- 首屏英雄区：占满屏幕 -->
+<section id="home" style="
+    height: 100vh; /* 占满浏览器高度 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding-top: 60px; /* 避开导航栏 */
+">
+    <!-- 职业照/抽象图（替换成你的图片地址，先留占位） -->
+    <img src="https://via.placeholder.com/180" style="
+        width: 180px;
+        height: 180px;
+        border-radius: 50%; /* 圆形头像 */
+        border: 3px solid #00f0ff; /* 霓虹蓝边框 */
+        margin-bottom: 30px;
+    ">
+   <h1 style="
+    font-size: 48px;
+    margin-bottom: 10px;
+    position: relative;
+    display: inline-block;
+">
+    <span class="word">周</span><span class="word">颂</span><span class="word">捷</span><span class="word">1</span>
+    <span class="neon-blue">|</span>
+    <span style="font-size: 28px; color: #aaaaaa; display: block;">
+        <span class="word">一</span><span class="word">名</span><span class="word">充</span><span class="word">满</span><span class="word">热</span><span class="word">情</span><span class="word">的</span><span class="word">新</span><span class="word">手</span><span class="word">前</span><span class="word">端</span><span class="word">开</span><span class="word">发</span><span class="word">工</span><span class="word">程</span><span class="word">师</span>
+    </span>
+</h1>
+<p style="color: #aaaaaa; margin-top: 20px; font-size: 18px;">
+    <span class="word">用</span><span class="word">代</span><span class="word">码</span><span class="word">创</span><span class="word">造</span><span class="word">简</span><span class="word">洁</span><span class="word">且</span><span class="word">有</span><span class="word">温</span><span class="word">度</span><span class="word">的</span><span class="word">体</span><span class="word">验</span>
+</p>
+</section>
+<!-- 关于我 -->
+<section id="about" style="
+    max-width: 800px;
+    margin: 80px auto;
+    padding: 0 20px;
+"class="scroll-anim-target">
+    <h2 style="
+        font-size: 32px;
+        margin-bottom: 30px;
+        border-left: 4px solid #00f0ff; /* 霓虹蓝左侧装饰线 */
+        padding-left: 15px;
+    ">关于我</h2>
+    <p style="
+        line-height: 1.8;
+        color: #dddddd;
+        font-size: 16px;
+    ">
+        你好~我是一名刚入门前端开发的爱好者，喜欢通过HTML/CSS/JavaScript把想法变成可视化的页面。平时除了敲代码，还喜欢研究视觉设计的排版逻辑，也会在博客里记录自己的学习心得。
+        <br><br>
+        我始终相信“简洁即是力量”，希望能做出既美观又实用的作品，也期待能和更多同好交流学习~
+    </p>
+</section>
+<!-- 个人经历时间线 -->
+<section id="timeline" style="
+    max-width: 800px;
+    margin: 80px auto;
+    padding: 0 20px;
+" class="scroll-anim-target">
+    <h2 style="
+        font-size: 32px;
+        margin-bottom: 40px;
+        border-left: 4px solid #00f0ff;
+        padding-left: 15px;
+    ">个人经历</h2>
+    <div style="position: relative;">
+        <!-- 时间线竖线 -->
+        <div style="
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: #00f0ff;
+            opacity: 0.3;
+        "></div>
+        
+        <!-- 经历1 -->
+        <div style="
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 40px;
+        ">
+            <div style="
+                position: absolute;
+                left: -8px;
+                top: 0;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background-color: #00f0ff;
+                border: 2px solid #121212;
+            "></div>
+            <h3 style="color: #00f0ff; margin-bottom: 10px;">2023 - 至今 | 前端开发工程师</h3>
+            <p style="color: #dddddd; margin-bottom: 5px;">某科技公司</p>
+            <p style="color: #aaaaaa; font-size: 14px;">负责公司官网和移动端H5的开发与优化，使用React和Vue技术栈，提升页面加载速度30%。</p>
+        </div>
+        
+        <!-- 经历2 -->
+        <div style="
+            position: relative;
+            padding-left: 30px;
+            margin-bottom: 40px;
+        ">
+            <div style="
+                position: absolute;
+                left: -8px;
+                top: 0;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background-color: #00f0ff;
+                border: 2px solid #121212;
+            "></div>
+            <h3 style="color: #00f0ff; margin-bottom: 10px;">2021 - 2023 | 前端实习生</h3>
+            <p style="color: #dddddd; margin-bottom: 5px;">某互联网创业公司</p>
+            <p style="color: #aaaaaa; font-size: 14px;">参与公司产品的前端开发，协助完成页面布局和交互效果，学习并实践响应式设计。</p>
+        </div>
+        
+        <!-- 经历3 -->
+        <div style="
+            position: relative;
+            padding-left: 30px;
+        ">
+            <div style="
+                position: absolute;
+                left: -8px;
+                top: 0;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background-color: #00f0ff;
+                border: 2px solid #121212;
+            "></div>
+            <h3 style="color: #00f0ff; margin-bottom: 10px;">2018 - 2022 | 计算机科学与技术专业</h3>
+            <p style="color: #dddddd; margin-bottom: 5px;">某大学</p>
+            <p style="color: #aaaaaa; font-size: 14px;">主修课程：Web开发、数据结构、算法、数据库原理，毕业设计获得校级优秀。</p>
+        </div>
+    </div>
+</section>
+<!-- 技能 -->
+<section id="skills" style="
+    background-color: #1a1a1a;
+    padding: 80px 20px;
+    margin: 80px 0;
+"class="scroll-anim-target">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <h2 style="
+            font-size: 32px;
+            margin-bottom: 40px;
+            border-left: 4px solid #00f0ff;
+            padding-left: 15px;
+        ">我的技能</h2>
+        <div style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            text-align: center;
+        ">
+            <!-- 每个技能卡片 -->
+            <div style="
+                padding: 20px;
+                background-color: #222222;
+                border-radius: 8px;
+                color: #00f0ff;
+            ">HTML</div>
+            <div style="
+                padding: 20px;
+                background-color: #222222;
+                border-radius: 8px;
+                color: #00f0ff;
+            ">CSS</div>
+            <div style="
+                padding: 20px;
+                background-color: #222222;
+                border-radius: 8px;
+                color: #00f0ff;
+            ">JavaScript</div>
+            <div style="
+                padding: 20px;
+                background-color: #222222;
+                border-radius: 8px;
+                color: #00f0ff;
+            ">Photoshop</div>
+            <div style="
+                padding: 20px;
+                background-color: #222222;
+                border-radius: 8px;
+                color: #00f0ff;
+            ">Figma</div>
+        </div>
+    </div>
+</section>
+<!-- 获奖荣誉 -->
+<section id="awards" style="
+    max-width: 800px;
+    margin: 80px auto;
+    padding: 0 20px;
+" class="scroll-anim-target">
+    <h2 style="
+        font-size: 32px;
+        margin-bottom: 40px;
+        border-left: 4px solid #00f0ff;
+        padding-left: 15px;
+    ">获奖荣誉</h2>
+    <div style="
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+    ">
+        <!-- 奖项1 -->
+        <div style="
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            padding: 25px;
+            border-left: 3px solid #00f0ff;
+            transition: all 0.3s ease;
+        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0, 240, 255, 0.1)'">
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            ">
+                <h3 style="
+                    color: #00f0ff;
+                    font-size: 18px;
+                    margin: 0;
+                ">XX技术大赛 一等奖</h3>
+                <span style="
+                    color: #aaaaaa;
+                    font-size: 14px;
+                ">2023年</span>
+            </div>
+            <p style="
+                color: #dddddd;
+                font-size: 14px;
+                line-height: 1.6;
+                margin-bottom: 10px;
+            ">由XX行业协会主办，参赛项目「基于XXX的智能交互系统」获得全国总决赛一等奖，技术创新性受到评委高度认可。</p>
+            <p style="
+                color: #aaaaaa;
+                font-size: 13px;
+                margin: 0;
+            ">颁发单位：XX行业协会 / XX科技公司</p>
+        </div>
+
+        <!-- 奖项2 -->
+        <div style="
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            padding: 25px;
+            border-left: 3px solid #00f0ff;
+            transition: all 0.3s ease;
+        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0, 240, 255, 0.1)'">
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            ">
+                <h3 style="
+                    color: #00f0ff;
+                    font-size: 18px;
+                    margin: 0;
+                ">校级优秀毕业生</h3>
+                <span style="
+                    color: #aaaaaa;
+                    font-size: 14px;
+                ">2022年</span>
+            </div>
+            <p style="
+                color: #dddddd;
+                font-size: 14px;
+                line-height: 1.6;
+                margin-bottom: 10px;
+            ">大学期间综合成绩排名专业前5%，曾获国家奖学金、校级三好学生等荣誉，毕业设计被评为校级优秀论文。</p>
+            <p style="
+                color: #aaaaaa;
+                font-size: 13px;
+                margin: 0;
+            ">颁发单位：XX大学计算机学院</p>
+        </div>
+
+        <!-- 奖项3 -->
+        <div style="
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            padding: 25px;
+            border-left: 3px solid #00f0ff;
+            transition: all 0.3s ease;
+        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0, 240, 255, 0.1)'">
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            ">
+                <h3 style="
+                    color: #00f0ff;
+                    font-size: 18px;
+                    margin: 0;
+                ">Web前端开发工程师（高级）证书</h3>
+                <span style="
+                    color: #aaaaaa;
+                    font-size: 14px;
+                ">2023年</span>
+            </div>
+            <p style="
+                color: #dddddd;
+                font-size: 14px;
+                line-height: 1.6;
+                margin-bottom: 10px;
+            ">通过XX认证机构的高级前端工程师技能考核，具备独立设计和开发复杂Web应用的能力，涵盖性能优化、跨端适配等领域。</p>
+            <p style="
+                color: #aaaaaa;
+                font-size: 13px;
+                margin: 0;
+            ">颁发单位：XX认证中心</p>
+        </div>
+    </div>
+</section>
+
+<!-- 项目/作品集 -->
+<section id="projects" style="
+    max-width: 1000px;
+    margin: 80px auto;
+    padding: 0 20px;
+"class="scroll-anim-target">
+    <h2 style="
+        font-size: 32px;
+        margin-bottom: 40px;
+        border-left: 4px solid #00f0ff;
+        padding-left: 15px;
+    ">我的项目</h2>
+    <div style="
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+    ">
+        <!-- 项目1 -->
+        <div class="project-card" style="
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer; /* 鼠标悬停时变成手型 */
+        " onclick="openModal('project1')">
+            <img src="https://via.placeholder.com/400x200/00f0ff/121212?text=Blog+Project" style="width: 100%; height: 200px; object-fit: cover;">
+            <div style="padding: 20px;">
+                <h3 style="margin-bottom: 10px; color: #00f0ff;">个人博客页面</h3>
+                <p style="color: #dddddd; margin-bottom: 15px; font-size: 14px;">
+                    用HTML+CSS搭建的响应式博客页面，支持文章列表和分类展示
+                </p>
+                <span style="color: #aaaaaa; font-size: 12px;">技术：HTML/CSS</span>
+            </div>
+        </div>
+
+        <!-- 项目2 -->
+        <div class="project-card" style="
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        " onclick="openModal('project2')">
+            <img src="https://via.placeholder.com/400x200/00f0ff/121212?text=Todo+App" style="width: 100%; height: 200px; object-fit: cover;">
+            <div style="padding: 20px;">
+                <h3 style="margin-bottom: 10px; color: #00f0ff;">待办事项工具</h3>
+                <p style="color: #dddddd; margin-bottom: 15px; font-size: 14px;">
+                    用JavaScript实现的本地存储待办事项，支持添加/删除/标记完成
+                </p>
+                <span style="color: #aaaaaa; font-size: 12px;">技术：HTML/CSS/JS</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- 项目卡片悬停效果 -->
+<style>
+    .project-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 240, 255, 0.2);
+    }
+</style>
+
+<!-- --- 弹窗(Modal) HTML结构 --- -->
+<!-- 弹窗1 -->
+<div id="project1" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="closeModal('project1')">&times;</span>
+    <h3>个人博客页面</h3>
+    <p>这是我为了练习HTML和CSS而制作的一个静态博客模板。我专注于实现响应式布局，确保它在手机、平板和电脑上都能有良好的阅读体验。页面包含了导航栏、文章列表、侧边栏和页脚等常见博客元素。我还尝试了使用Flexbox和Grid来进行复杂的布局。</p>
+    <div class="modal-footer">
+      <a href="#" onclick="closeModal('project1')">查看详情</a>
+    </div>
+  </div>
+</div>
+
+<!-- 弹窗2 -->
+<div id="project2" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="closeModal('project2')">&times;</span>
+    <h3>待办事项工具</h3>
+    <p>这是一个基于JavaScript的单页应用。用户可以添加新的待办事项，标记已完成的事项，以及删除不需要的事项。我使用了localStorage来保存用户的数据，这样即使用户刷新页面，他们的待办列表也不会丢失。这个项目让我对JavaScript的DOM操作和数据存储有了更深入的理解。</p>
+    <div class="modal-footer">
+      <a href="#" onclick="closeModal('project2')">查看详情</a>
+    </div>
+  </div>
+</div>
+<!-- 个人博客 -->
+<section id="blog" style="
+    max-width: 1000px;
+    margin: 80px auto;
+    padding: 0 20px;
+" class="scroll-anim-target">
+    <h2 style="
+        font-size: 32px;
+        margin-bottom: 40px;
+        border-left: 4px solid #00f0ff;
+        padding-left: 15px;
+    ">技术博客</h2>
+    <div style="
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+    ">
+        <!-- 文章1 -->
+        <div style="
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0, 240, 255, 0.1)'">
+            <img src="https://via.placeholder.com/400x200/00f0ff/121212?text=React+Optimization" style="
+                width: 100%;
+                height: 180px;
+                object-fit: cover;
+            ">
+            <div style="padding: 20px;">
+                <h3 style="
+                    color: #00f0ff;
+                    margin-bottom: 10px;
+                    font-size: 18px;
+                ">React性能优化实战：从理论到实践</h3>
+                <p style="
+                    color: #dddddd;
+                    margin-bottom: 15px;
+                    font-size: 14px;
+                    line-height: 1.6;
+                ">本文详细介绍了React应用中常见的性能问题，包括渲染优化、状态管理优化和代码分割等方面，并结合实际项目案例给出了具体的优化方案。</p>
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    color: #aaaaaa;
+                    font-size: 12px;
+                ">
+                    <span>发布于 2023-06-15</span>
+                    <a href="#" style="
+                        color: #00f0ff;
+                        text-decoration: none;
+                    ">阅读更多 →</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 文章2 -->
+        <div style="
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0, 240, 255, 0.1)'">
+            <img src="https://via.placeholder.com/400x200/00f0ff/121212?text=CSS+Grid" style="
+                width: 100%;
+                height: 180px;
+                object-fit: cover;
+            ">
+            <div style="padding: 20px;">
+                <h3 style="
+                    color: #00f0ff;
+                    margin-bottom: 10px;
+                    font-size: 18px;
+                ">CSS Grid完全指南：构建复杂布局的利器</h3>
+                <p style="
+                    color: #dddddd;
+                    margin-bottom: 15px;
+                    font-size: 14px;
+                    line-height: 1.6;
+                ">CSS Grid是一种强大的二维布局系统，本文从基础概念入手，详细讲解了Grid的各种属性和用法，并通过多个实例展示了如何用Grid构建响应式布局。</p>
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    color: #aaaaaa;
+                    font-size: 12px;
+                ">
+                    <span>发布于 2023-04-22</span>
+                    <a href="#" style="
+                        color: #00f0ff;
+                        text-decoration: none;
+                    ">阅读更多 →</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 文章3 -->
+        <div style="
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        " onmouseover="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 10px 20px rgba(0, 240, 255, 0.1)'">
+            <img src="https://via.placeholder.com/400x200/00f0ff/121212?text=TypeScript" style="
+                width: 100%;
+                height: 180px;
+                object-fit: cover;
+            ">
+            <div style="padding: 20px;">
+                <h3 style="
+                    color: #00f0ff;
+                    margin-bottom: 10px;
+                    font-size: 18px;
+                ">TypeScript入门教程：为什么你应该使用TS</h3>
+                <p style="
+                    color: #dddddd;
+                    margin-bottom: 15px;
+                    font-size: 14px;
+                    line-height: 1.6;
+                ">TypeScript是JavaScript的超集，提供了静态类型检查功能。本文介绍了TypeScript的基本语法和核心特性，并分析了使用TypeScript的优势和适用场景。</p>
+                <div style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    color: #aaaaaa;
+                    font-size: 12px;
+                ">
+                    <span>发布于 2023-03-10</span>
+                    <a href="#" style="
+                        color: #00f0ff;
+                        text-decoration: none;
+                    ">阅读更多 →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div style="
+        text-align: center;
+        margin-top: 40px;
+    ">
+        <a href="#" style="
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #222222;
+            color: #00f0ff;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            border: 1px solid #00f0ff;
+        " onmouseover="this.style.backgroundColor='#00f0ff'; this.style.color='#121212'" onmouseout="this.style.backgroundColor='#222222'; this.style.color='#00f0ff'">查看更多文章</a>
+    </div>
+</section>
+
+<!-- 联系方式 -->
+<section id="contact" style="
+    background-color: #1a1a1a;
+    padding: 80px 20px;
+    text-align: center;
+" class="scroll-anim-target">
+    <h2 style="
+        font-size: 32px;
+        margin-bottom: 40px;
+        border-left: 4px solid #00f0ff;
+        padding-left: 15px;
+        display: inline-block;
+    ">联系我</h2>
+    
+    <!-- 联系表单 -->
+    <div style="
+        max-width: 600px;
+        margin: 0 auto 60px;
+        background-color: #121212;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+    ">
+        <form>
+            <div style="
+                margin-bottom: 20px;
+                text-align: left;
+            ">
+                <label for="name" style="
+                    display: block;
+                    margin-bottom: 8px;
+                    color: #dddddd;
+                    font-size: 14px;
+                ">姓名</label>
+                <input type="text" id="name" style="
+                    width: 100%;
+                    padding: 12px 15px;
+                    background-color: #222222;
+                    border: 1px solid #333;
+                    border-radius: 4px;
+                    color: #ffffff;
+                    font-size: 16px;
+                " placeholder="请输入你的姓名">
+            </div>
+            
+            <div style="
+                margin-bottom: 20px;
+                text-align: left;
+            ">
+                <label for="email" style="
+                    display: block;
+                    margin-bottom: 8px;
+                    color: #dddddd;
+                    font-size: 14px;
+                ">邮箱</label>
+                <input type="email" id="email" style="
+                    width: 100%;
+                    padding: 12px 15px;
+                    background-color: #222222;
+                    border: 1px solid #333;
+                    border-radius: 4px;
+                    color: #ffffff;
+                    font-size: 16px;
+                " placeholder="请输入你的邮箱">
+            </div>
+            
+            <div style="
+                margin-bottom: 20px;
+                text-align: left;
+            ">
+                <label for="message" style="
+                    display: block;
+                    margin-bottom: 8px;
+                    color: #dddddd;
+                    font-size: 14px;
+                ">留言</label>
+                <textarea id="message" rows="5" style="
+                    width: 100%;
+                    padding: 12px 15px;
+                    background-color: #222222;
+                    border: 1px solid #333;
+                    border-radius: 4px;
+                    color: #ffffff;
+                    font-size: 16px;
+                    resize: none;
+                " placeholder="请输入你的留言内容"></textarea>
+            </div>
+            
+            <button type="submit" style="
+                width: 100%;
+                padding: 12px 0;
+                background-color: #00f0ff;
+                color: #121212;
+                border: none;
+                border-radius: 4px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            " onmouseover="this.style.backgroundColor='#00d8e6'" onmouseout="this.style.backgroundColor='#00f0ff'">发送消息</button>
+        </form>
+    </div>
+    
+    <!-- 其他联系方式 -->
+    <div style="
+        max-width: 600px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        font-size: 18px;
+    ">
+        <a href="mailto:你的邮箱@xxx.com" style="
+            color: #00f0ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        ">
+            <span>📧</span>
+            <span>你的邮箱@xxx.com</span>
+        </a>
+        <a href="https://github.com/你的账号" style="
+            color: #00f0ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        ">
+            <span>💻</span>
+            <span>GitHub：你的账号</span>
+        </a>
+        <a href="https://linkedin.com/你的账号" style="
+            color: #00f0ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        ">
+            <span>🔗</span>
+            <span>领英：你的账号</span>
+        </a>
+        <a href="tel:你的电话" style="
+            color: #00f0ff;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        ">
+            <span>📞</span>
+            <span>你的电话</span>
+        </a>
+    </div>
+</section>
+<!-- 页脚 -->
+<footer style="
+    background-color: #121212;
+    padding: 40px 20px;
+    text-align: center;
+    border-top: 1px solid #222222;
+">
+    <div style="
+        max-width: 1200px;
+        margin: 0 auto;
+    ">
+        <!-- 返回顶部按钮 -->
+        <a href="#home" style="
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: #222222;
+            color: #00f0ff;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            margin-bottom: 20px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        " onmouseover="this.style.backgroundColor='#00f0ff'; this.style.color='#121212'" onmouseout="this.style.backgroundColor='#222222'; this.style.color='#00f0ff'">↑</a>
+        
+        <!-- 版权信息 -->
+        <p style="
+            color: #aaaaaa;
+            font-size: 14px;
+            margin-bottom: 10px;
+        ">© 2025 你的名字. 保留所有权利。</p>
+        
+        <!-- 社交媒体链接 -->
+        <div style="
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        ">
+            <a href="https://github.com/你的账号" style="
+                color: #aaaaaa;
+                text-decoration: none;
+                transition: color 0.3s ease;
+            " onmouseover="this.style.color='#00f0ff'">GitHub</a>
+            <a href="https://linkedin.com/你的账号" style="
+                color: #aaaaaa;
+                text-decoration: none;
+                transition: color 0.3s ease;
+            " onmouseover="this.style.color='#00f0ff'">LinkedIn</a>
+            <a href="https://twitter.com/你的账号" style="
+                color: #aaaaaa;
+                text-decoration: none;
+                transition: color 0.3s ease;
+            " onmouseover="this.style.color='#00f0ff'">Twitter</a>
+            <a href="https://weixin.qq.com/你的公众号" style="
+                color: #aaaaaa;
+                text-decoration: none;
+                transition: color 0.3s ease;
+            " onmouseover="this.style.color='#00f0ff'">微信公众号</a>
+        </div>
+    </div>
+</footer>
+<!-- JavaScript 代码 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const animateElements = document.querySelectorAll('.scroll-anim-target');
+        
+        // 检查元素是否在视口中
+        function checkInView() {
+            animateElements.forEach(element => {
+                const elementTop = element.getBoundingClientRect().top;
+                const triggerPoint = window.innerHeight * 0.8; // 当元素顶部到达屏幕80%高度时触发
+                
+                if (elementTop < triggerPoint) {
+                    element.classList.add('animate-on-scroll');
+                }
+            });
+        }
+
+        // 页面加载时和滚动时检查
+        window.addEventListener('scroll', checkInView);
+        checkInView(); // 初始加载时检查一次
+    });
+
+    // --- 弹窗逻辑 (这部分保持不变) ---
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('show');
+        document.body.style.overflow = '';
+    }
+
+    window.addEventListener('click', function(event) {
+        if (event.target.classList.contains('modal')) {
+            event.target.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+    });
+const wordElements = document.querySelectorAll('#home .word');
+    
+    // 2. 创建一个观察者，用于检测元素是否进入视口
+    const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1 // 当元素的10%进入视口时触发
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                // 3. 当元素进入视口时，为每个字添加动画类，并设置延迟
+                wordElements.forEach((word, index) => {
+                    setTimeout(() => {
+                        word.classList.add('pop-in');
+                    }, index * 80); // 每个字之间间隔80毫秒，可以调整
+                });
+                // 4. 动画只播放一次，所以取消观察
+                observer.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+
+    // 5. 开始观察包含所有文字的容器（这里我们观察 #home 这个 section）
+    if (wordElements.length > 0) {
+        observer.observe(document.getElementById('home'));
+    }
+</script>
+</body>
+</html>
